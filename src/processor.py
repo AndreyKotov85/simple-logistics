@@ -1,5 +1,9 @@
 __author__ = 'afterlastangel@gmail.com'
 from math import hypot
+import googlemaps
+import os
+from math import radians, cos, sin, asin, sqrt
+
 
 class Journey:
     """An object to store the journey"""
@@ -74,23 +78,46 @@ def remove_journey(data, journey):
                 if i == k or j == k:
                     data[i][j] = 0
 
-def distant(point1, point2):
+
+def haversine(lon1, lat1, lon2, lat2):
     """
-    TODO: Find duration https://developers.google.com/maps/documentation/distance-matrix/intro
+    Calculate the great circle distance between two points
+    on the earth (specified in decimal degrees)
     """
-    return hypot(point1.longitude - point2.longitude, point1.latitude - point2.latitude)
+    # convert decimal degrees to radians
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    # haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a))
+    km = 6367 * c
+    return km
+
+
+def duration(point1, point2):
+    """
+    Find duration https://developers.google.com/maps/documentation/distance-matrix/intro
+    """
+    gmaps = googlemaps.Client(key=os.environ.get('SIMPLE_LOGISTICS_KEY'))
+    result = gmaps.distance_matrix([(point1.latitude,point1.longitude)], [(point2.latitude,point2.longitude)])
+    if result['status'] == u'OK':
+        if result['rows'][0]['elements'][0]['status'] == u'OK':
+            return result['rows'][0]['elements'][0]['duration']['value']
+    # in case of google maps fail, use estimation and speed 20km/h
+    return haversine(point1.longitude, point1.latitude, point2.longitude, point2.latitude) * 180
 
 def calculate_request(hq, requests):
     data = [[0 for _ in range(len(requests)+1)] for _ in range(len(requests)+1)]
     for j in range(1, len(requests)+1):
-        data[0][j] = distant(hq, requests[j-1].start) \
-            + distant(requests[j-1].start, requests[j-1].end)
+        data[0][j] = duration(hq, requests[j-1].start) \
+            + duration(requests[j-1].start, requests[j-1].end)
 
     for i in range(1, len(requests)+1):
         for j in range(1, len(requests)+1):
             if i != j:
-                data[i][j] = distant(requests[i-1].end, requests[j-1].start) \
-                    + distant(requests[j-1].start, requests[j-1].end)
+                data[i][j] = duration(requests[i-1].end, requests[j-1].start) \
+                    + duration(requests[j-1].start, requests[j-1].end)
 
     return data
 
@@ -103,10 +130,10 @@ def read_data():
             worker = int(line.split(" ")[0])
             max_travel = float(line.split(" ")[1])
         elif lineno == 1:
-            hq = Point(int(line.split(" ")[0]), int(line.split(" ")[1]))
+            hq = Point(float(line.split(" ")[0]), float(line.split(" ")[1]))
         else:
-            start = Point(int(line.split(" ")[0]), int(line.split(" ")[1]))
-            end = Point(int(line.split(" ")[2]), int(line.split(" ")[3]))
+            start = Point(float(line.split(" ")[0]), float(line.split(" ")[1]))
+            end = Point(float(line.split(" ")[2]), float(line.split(" ")[3]))
             requests.append(DeliveryRequest(start, end))
         lineno = lineno + 1
     return worker, max_travel, hq, requests
