@@ -53,8 +53,7 @@ def process_data(data, max_length):
             shortest_length = float("inf")
             shortest_journey_data = None
             for k in range(1, size):
-                print i-1, j, k, journey_array[i-1][k].data
-                if j not in journey_array[i-1][k].data and data[k][j] > 0:
+                if journey_array[i-1][k].data and j not in journey_array[i-1][k].data and data[k][j] > 0:
                     new_length = journey_array[i-1][k].length + data[k][j]
                     if new_length <= max_length and new_length < shortest_length:
                         shortest_journey_data = journey_array[i-1][k].data[:]
@@ -63,16 +62,10 @@ def process_data(data, max_length):
                 journey_array[i][j].data = shortest_journey_data[:]
                 journey_array[i][j].data.append(j)
                 journey_array[i][j].length = shortest_length
-                #print i, j, k
-                #print journey_array[i][j].data, shortest_length
                 found = True
         if not found:
-            print ("not found")
             return find_shortest_journey(journey_array[i-1])
-        #print ("found" + str(i))
-        #for v in journey_array[i]:
-        #    print v.data
-    return find_shortest_journey(journey_array[size-1])
+    return find_shortest_journey(journey_array[size-2])
 
 def remove_journey(data, journey):
     for k in journey:
@@ -82,6 +75,9 @@ def remove_journey(data, journey):
                     data[i][j] = 0
 
 def distant(point1, point2):
+    """
+    TODO: Find duration https://developers.google.com/maps/documentation/distance-matrix/intro
+    """
     return hypot(point1.longitude - point2.longitude, point1.latitude - point2.latitude)
 
 def calculate_request(hq, requests):
@@ -126,12 +122,14 @@ def main():
 
     worker, max_travel, hq, requests = read_data()
     data = calculate_request(hq, requests)
+    """
     data = [[0, 5, 7, 12, 6],
             [0, 0, 5, 7, 3],
             [0, 7, 0, 5, 4],
             [0, 4, 5, 0, 4],
             [0, 8, 5, 8, 4]]
     max_travel = 100
+    """
     for i in range(worker):
         journey, length = process_data(data, max_travel)
         if journey:
